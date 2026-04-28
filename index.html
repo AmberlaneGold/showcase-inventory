@@ -78,11 +78,12 @@
     <div class="qty">Qty: <span id="qty"></span></div>
     <div class="price">Price: <span id="price"></span></div>
 
-    <input id="priceInput" type="number" placeholder="Enter price (optional)">
+    <input id="priceInput" type="number" placeholder="Price (optional)">
 
     <button class="yes" id="yesBtn">YES</button>
     <button class="no" onclick="missing()">LONG PRESS = MISSING</button>
     <button class="skip" onclick="skip()">SKIP</button>
+    <button class="skip" onclick="back()">⬅ BACK</button>
 
     <div id="status"></div>
   </div>
@@ -90,7 +91,7 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGZnqzajLLFwYV9QtaTnobORtBp9OhdX75YaHgAROyHqWXPMueqB4FDyisnyPDCalWQw/exec";
+const SCRIPT_URL = "PASTE_YOUR_SCRIPT_URL_HERE";
 
 let currentRow = 1;
 let longPressTimer;
@@ -115,9 +116,7 @@ function loadNext() {
 }
 
 /**
- * SMART YES BUTTON:
- * - short press = YES
- * - long press = MISSING
+ * YES BUTTON (tap / long press)
  */
 const yesBtn = document.getElementById("yesBtn");
 
@@ -131,12 +130,12 @@ yesBtn.addEventListener("touchend", endPress);
 function startPress() {
   longPressTimer = setTimeout(() => {
     missing();
-  }, 700); // long press threshold
+  }, 700);
 }
 
 function endPress() {
   clearTimeout(longPressTimer);
-  yes(); // normal press
+  yes();
 }
 
 function yes() {
@@ -153,6 +152,11 @@ function missing() {
 
 function skip() {
   fetch(SCRIPT_URL + "?action=skip&row=" + currentRow)
+    .then(() => loadNext());
+}
+
+function back() {
+  fetch(SCRIPT_URL + "?action=back")
     .then(() => loadNext());
 }
 
