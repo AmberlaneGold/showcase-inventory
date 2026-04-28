@@ -60,7 +60,7 @@ button {
 .no { background: #e74c3c; color: white; }
 .skip { background: #777; color: white; }
 
-/* 📊 PROGRESS BAR */
+/* 📊 Progress Bar */
 #progressContainer {
   position: fixed;
   bottom: 0;
@@ -100,7 +100,7 @@ button {
 
 </div>
 
-<!-- 📊 Progress bar -->
+<!-- 📊 Progress Bar -->
 <div id="progressContainer">
   <div id="progressBar"></div>
 </div>
@@ -170,7 +170,7 @@ function nextLocal() {
 }
 
 /**
- * 📊 PROGRESS BAR
+ * 📊 PROGRESS
  */
 function updateProgress() {
   if (!currentRow || !startRow || !lastSheetRow) return;
@@ -185,38 +185,39 @@ function updateProgress() {
 }
 
 /**
- * 🚀 YES (instant UI + background sync)
+ * ✅ YES (FIXED ROW BUG)
  */
 function yes() {
   const price = document.getElementById("priceInput").value;
 
+  // 🔒 lock correct row BEFORE moving
+  const rowToUpdate = currentRow;
+
   nextLocal();
 
-  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + price);
-
-  setTimeout(updateProgress, 50);
+  fetch(SCRIPT_URL + "?action=yes&row=" + rowToUpdate + "&price=" + price);
 }
 
 /**
- * ❌ MISS
+ * ❌ MISSING (FIXED ROW BUG)
  */
 function missing() {
+  const rowToUpdate = currentRow;
+
   nextLocal();
 
-  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow);
-
-  setTimeout(updateProgress, 50);
+  fetch(SCRIPT_URL + "?action=missing&row=" + rowToUpdate);
 }
 
 /**
- * ⏭ SKIP
+ * ⏭ SKIP (FIXED ROW BUG)
  */
 function skip() {
+  const rowToUpdate = currentRow;
+
   nextLocal();
 
-  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow);
-
-  setTimeout(updateProgress, 50);
+  fetch(SCRIPT_URL + "?action=skip&row=" + rowToUpdate);
 }
 
 /**
