@@ -114,10 +114,10 @@ button {
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB5dQUxJwzDCj_mw4uuq5OAqR5IMmKgtLYVfPOxUHQ8Gpxn8ARQs5G5udhXHTyZ2aycw/exec";
+const SCRIPT_URL = "PASTE_YOUR_SCRIPT_URL_HERE";
 
 let batch = [];
-let index = 0;
+let currentIndex = 0;
 let currentRow = null;
 
 let startRow = 1;
@@ -132,7 +132,6 @@ function loadBatch() {
     .then(data => {
 
       batch = data.items;
-      index = 0;
 
       if (!batch.length) {
         document.body.innerHTML =
@@ -143,7 +142,8 @@ function loadBatch() {
       startRow = batch[0].row;
       lastSheetRow = data.lastRow;
 
-      render(batch[index]);
+      currentIndex = 0;
+      render(batch[currentIndex]);
     });
 }
 
@@ -158,22 +158,7 @@ function render(item) {
   document.getElementById("priceInput").value = "";
 
   updateProgress();
-
-  locked = false; // unlock after render
-}
-
-/* NEXT */
-function nextLocal() {
-  if (locked) return;
-  locked = true;
-
-  index++;
-
-  if (index >= batch.length) {
-    loadBatch();
-  } else {
-    render(batch[index]);
-  }
+  locked = false;
 }
 
 /* PROGRESS */
@@ -188,88 +173,95 @@ function updateProgress() {
   document.getElementById("progressBar").style.width = percent + "%";
 }
 
-/* ACTION WRAPPER */
-function runAction(callback) {
-  if (locked) return;
-
-  const row = currentRow;
-  const price = document.getElementById("priceInput").value;
-
-  nextLocal();
-
-  callback(row, price);
+/* GET NEXT VALID ITEM (ROW-BASED) */
+function getNext() {
+  return batch.find(item => item.row > currentRow);
 }
 
 /* YES */
 function yes() {
-  runAction((row, price) => {
-    fetch(SCRIPT_URL + "?action=yes&row=" + row + "&price=" + price);
-  });
+  if (locked) return;
+  locked = true;
+
+  const row = currentRow;
+  const price = document.getElementById("priceInput").value;
+
+  fetch(SCRIPT_URL + "?action=yes&row=" + row + "&price=" + price);
+
+  const next = getNext();
+  if (next) render(next);
+  else loadBatch();
 }
 
 /* MISSING */
 function missing() {
-  runAction((row) => {
-    fetch(SCRIPT_URL + "?action=missing&row=" + row);
-  });
+  if (locked) return;
+  locked = true;
+
+  const row = currentRow;
+
+  fetch(SCRIPT_URL + "?action=missing&row=" + row);
+
+  const next = getNext();
+  if (next) render(next);
+  else loadBatch();
 }
 
 /* SKIP */
 function skip() {
-  runAction((row) => {
-    fetch(SCRIPT_URL + "?action=skip&row=" + row);
-  });
+  if (locked) return;
+  locked = true;
+
+  const row = currentRow;
+
+  fetch(SCRIPT_URL + "?action=skip&row=" + row);
+
+  const next = getNext();
+  if (next) render(next);
+  else loadBatch();
 }
 
 /* BACK */
 function back() {
   if (locked) return;
 
-  if (index > 0) {
-    index--;
-    render(batch[index]);
+  const i = batch.findIndex(x => x.row === currentRow);
+
+  if (i > 0) {
+    render(batch[i - 1]);
   } else {
     fetch(SCRIPT_URL + "?action=back")
       .then(() => loadBatch());
   }
 }
 
-/* 🔥 SIMPLE + RELIABLE BUTTON SYSTEM */
+/* YES BUTTON */
 const yesBtn = document.getElementById("yesBtn");
 
-let holdTimer;
+let holdTimer = null;
 
-/* LONG PRESS = MISSING */
 yesBtn.addEventListener("touchstart", () => {
   holdTimer = setTimeout(() => {
     missing();
   }, 700);
 });
 
-/* TAP = YES */
 yesBtn.addEventListener("touchend", () => {
   clearTimeout(holdTimer);
   yes();
 });
 
-/* DESKTOP CLICK */
 yesBtn.addEventListener("click", (e) => {
   e.preventDefault();
   yes();
 });
 
-/* 🛑 INPUT SAFE */
-const input = document.getElementById("priceInput");
-
-input.addEventListener("click", (e) => {
+/* INPUT SAFETY */
+document.getElementById("priceInput").addEventListener("click", e => {
   e.stopPropagation();
 });
 
-input.addEventListener("touchstart", (e) => {
-  e.stopPropagation();
-});
-
-/* INIT */
+/* START */
 loadBatch();
 </script>
 
