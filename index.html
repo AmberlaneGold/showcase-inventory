@@ -6,7 +6,7 @@
 
 <style>
 body {
-  font-family: -apple-system, BlinkMacSystemFont, Arial;
+  font-family: -apple-system, Arial;
   margin: 0;
   background: #f2f2f2;
   display: flex;
@@ -99,7 +99,7 @@ button {
     <input id="priceInput" type="number" placeholder="Update price (optional)">
 
     <button class="yes" id="yesBtn">YES</button>
-    <button class="no" onclick="missing()">MISSING (hold YES)</button>
+    <button class="no" onclick="missing()">MISSING</button>
 
     <div class="row">
       <button class="skip" onclick="skip()">SKIP</button>
@@ -123,7 +123,7 @@ let currentRow = null;
 let startRow = 1;
 let lastSheetRow = 1;
 
-let isProcessing = false;
+let locked = false;
 
 /* LOAD */
 function loadBatch() {
@@ -158,11 +158,17 @@ function render(item) {
   document.getElementById("priceInput").value = "";
 
   updateProgress();
+
+  locked = false; // unlock after render
 }
 
 /* NEXT */
 function nextLocal() {
+  if (locked) return;
+  locked = true;
+
   index++;
+
   if (index >= batch.length) {
     loadBatch();
   } else {
@@ -182,55 +188,42 @@ function updateProgress() {
   document.getElementById("progressBar").style.width = percent + "%";
 }
 
-/* YES */
-function yes() {
-  if (isProcessing) return;
-  isProcessing = true;
+/* ACTION WRAPPER */
+function runAction(callback) {
+  if (locked) return;
 
-  const rowToUpdate = currentRow;
+  const row = currentRow;
   const price = document.getElementById("priceInput").value;
 
   nextLocal();
 
-  fetch(SCRIPT_URL + "?action=yes&row=" + rowToUpdate + "&price=" + price)
-    .finally(() => {
-      isProcessing = false;
-    });
+  callback(row, price);
+}
+
+/* YES */
+function yes() {
+  runAction((row, price) => {
+    fetch(SCRIPT_URL + "?action=yes&row=" + row + "&price=" + price);
+  });
 }
 
 /* MISSING */
 function missing() {
-  if (isProcessing) return;
-  isProcessing = true;
-
-  const rowToUpdate = currentRow;
-
-  nextLocal();
-
-  fetch(SCRIPT_URL + "?action=missing&row=" + rowToUpdate)
-    .finally(() => {
-      isProcessing = false;
-    });
+  runAction((row) => {
+    fetch(SCRIPT_URL + "?action=missing&row=" + row);
+  });
 }
 
 /* SKIP */
 function skip() {
-  if (isProcessing) return;
-  isProcessing = true;
-
-  const rowToUpdate = currentRow;
-
-  nextLocal();
-
-  fetch(SCRIPT_URL + "?action=skip&row=" + rowToUpdate)
-    .finally(() => {
-      isProcessing = false;
-    });
+  runAction((row) => {
+    fetch(SCRIPT_URL + "?action=skip&row=" + row);
+  });
 }
 
 /* BACK */
 function back() {
-  if (isProcessing) return;
+  if (locked) return;
 
   if (index > 0) {
     index--;
@@ -241,39 +234,38 @@ function back() {
   }
 }
 
-/* 🔥 FIXED BUTTON HANDLING (NO DOUBLE TRIGGER) */
+/* 🔥 SIMPLE + RELIABLE BUTTON SYSTEM */
 const yesBtn = document.getElementById("yesBtn");
 
-let pressTimer = null;
-let longPressTriggered = false;
+let holdTimer;
 
-yesBtn.addEventListener("pointerdown", (e) => {
-  e.preventDefault();
-
-  longPressTriggered = false;
-
-  pressTimer = setTimeout(() => {
-    longPressTriggered = true;
+/* LONG PRESS = MISSING */
+yesBtn.addEventListener("touchstart", () => {
+  holdTimer = setTimeout(() => {
     missing();
   }, 700);
 });
 
-yesBtn.addEventListener("pointerup", (e) => {
+/* TAP = YES */
+yesBtn.addEventListener("touchend", () => {
+  clearTimeout(holdTimer);
+  yes();
+});
+
+/* DESKTOP CLICK */
+yesBtn.addEventListener("click", (e) => {
   e.preventDefault();
-
-  clearTimeout(pressTimer);
-
-  if (!longPressTriggered) {
-    yes();
-  }
+  yes();
 });
 
-yesBtn.addEventListener("pointerleave", () => {
-  clearTimeout(pressTimer);
+/* 🛑 INPUT SAFE */
+const input = document.getElementById("priceInput");
+
+input.addEventListener("click", (e) => {
+  e.stopPropagation();
 });
 
-/* PREVENT INPUT FROM TRIGGERING BUTTON */
-document.getElementById("priceInput").addEventListener("pointerdown", (e) => {
+input.addEventListener("touchstart", (e) => {
   e.stopPropagation();
 });
 
