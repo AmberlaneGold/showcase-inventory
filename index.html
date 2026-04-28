@@ -81,7 +81,7 @@
     <input id="priceInput" type="number" placeholder="Price (optional)">
 
     <button class="yes" id="yesBtn">YES</button>
-    <button class="no" onclick="missing()">LONG PRESS = MISSING</button>
+    <button class="no" onclick="missing()">MISSING (long press)</button>
     <button class="skip" onclick="skip()">SKIP</button>
     <button class="skip" onclick="back()">⬅ BACK</button>
 
@@ -91,17 +91,21 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyS9FgGenPowxB9vs3Ca6sV2S0laimsutN3GsiYmx0yhHJMJwG8u7hT3BUBrHADjsNRtQ/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1RU5y3eXIJGQswoezHlPQB5G9w8Km1BVe9nQCocRno0RK086Rrb8ZkVufCCnCeNXY6g/exec";
 
 let currentRow = 1;
 let longPressTimer;
 
+/**
+ * ⚡ FAST LOAD (no caching lag)
+ */
 function loadNext() {
   fetch(SCRIPT_URL + "?action=getNext")
     .then(r => r.json())
     .then(data => {
       if (!data) {
-        document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;'>All done ✅</h2>";
+        document.body.innerHTML =
+          "<h2 style='text-align:center;margin-top:100px;'>All done ✅</h2>";
         return;
       }
 
@@ -116,7 +120,7 @@ function loadNext() {
 }
 
 /**
- * YES BUTTON (tap / long press)
+ * YES button (tap + long press support)
  */
 const yesBtn = document.getElementById("yesBtn");
 
