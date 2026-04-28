@@ -124,7 +124,6 @@ let startRow = 1;
 let lastSheetRow = 1;
 
 let isProcessing = false;
-let pressTimer;
 
 /* LOAD */
 function loadBatch() {
@@ -242,18 +241,31 @@ function back() {
   }
 }
 
-/* LONG PRESS (SAFE) */
+/* 🔥 FIXED BUTTON HANDLING (NO DOUBLE TRIGGER) */
 const yesBtn = document.getElementById("yesBtn");
 
-yesBtn.addEventListener("pointerdown", () => {
+let pressTimer = null;
+let longPressTriggered = false;
+
+yesBtn.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+
+  longPressTriggered = false;
+
   pressTimer = setTimeout(() => {
+    longPressTriggered = true;
     missing();
   }, 700);
 });
 
-yesBtn.addEventListener("pointerup", () => {
+yesBtn.addEventListener("pointerup", (e) => {
+  e.preventDefault();
+
   clearTimeout(pressTimer);
-  yes();
+
+  if (!longPressTriggered) {
+    yes();
+  }
 });
 
 yesBtn.addEventListener("pointerleave", () => {
