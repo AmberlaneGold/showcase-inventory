@@ -22,8 +22,8 @@
       padding: 25px;
       border-radius: 16px;
       margin-top: 40px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
       text-align: center;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     }
 
     .name {
@@ -32,16 +32,19 @@
       margin-bottom: 10px;
     }
 
-    .qty {
-      font-size: 18px;
+    .qty, .price {
+      font-size: 16px;
       color: #555;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
 
-    .progress {
-      font-size: 14px;
-      color: #888;
-      margin-bottom: 20px;
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
     }
 
     button {
@@ -71,11 +74,14 @@
 
   <div class="card">
     <div class="name" id="name">Loading...</div>
-    <div class="qty">Qty: <span id="qty"></span></div>
-    <div class="progress" id="progress"></div>
 
-    <button class="yes" onclick="mark(true)">YES</button>
-    <button class="no" onclick="mark(false)">NO</button>
+    <div class="qty">Qty: <span id="qty"></span></div>
+    <div class="price">Price: <span id="price"></span></div>
+
+    <input id="priceInput" type="number" placeholder="Enter price (optional)">
+
+    <button class="yes" id="yesBtn">YES</button>
+    <button class="no" onclick="missing()">LONG PRESS = MISSING</button>
     <button class="skip" onclick="skip()">SKIP</button>
 
     <div id="status"></div>
@@ -84,35 +90,64 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6IVM7_0ucXTYXzxqZLc9y-s6W8sqIxWsUhW10PFwhTlI9j87HCeLya9iyU40jOzGc/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyGZnqzajLLFwYV9QtaTnobORtBp9OhdX75YaHgAROyHqWXPMueqB4FDyisnyPDCalWQw/exec";
 
 let currentRow = 1;
-let total = 0;
+let longPressTimer;
 
 function loadNext() {
   fetch(SCRIPT_URL + "?action=getNext")
     .then(r => r.json())
     .then(data => {
       if (!data) {
-        document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;'>All items complete ✅</h2>";
+        document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;'>All done ✅</h2>";
         return;
       }
 
       currentRow = data.row;
-      total = data.total || total;
 
       document.getElementById("name").innerText = data.name;
       document.getElementById("qty").innerText = data.qty;
+      document.getElementById("price").innerText = data.price;
 
-      document.getElementById("progress").innerText =
-        "Item " + data.row + " of ~" + (total || "?");
-
-      document.getElementById("status").innerText = "";
+      document.getElementById("priceInput").value = "";
     });
 }
 
-function mark(present) {
-  fetch(SCRIPT_URL + "?action=update&row=" + currentRow + "&present=" + present)
+/**
+ * SMART YES BUTTON:
+ * - short press = YES
+ * - long press = MISSING
+ */
+const yesBtn = document.getElementById("yesBtn");
+
+yesBtn.addEventListener("mousedown", startPress);
+yesBtn.addEventListener("touchstart", startPress);
+
+yesBtn.addEventListener("mouseup", endPress);
+yesBtn.addEventListener("mouseleave", endPress);
+yesBtn.addEventListener("touchend", endPress);
+
+function startPress() {
+  longPressTimer = setTimeout(() => {
+    missing();
+  }, 700); // long press threshold
+}
+
+function endPress() {
+  clearTimeout(longPressTimer);
+  yes(); // normal press
+}
+
+function yes() {
+  const price = document.getElementById("priceInput").value;
+
+  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + price)
+    .then(() => loadNext());
+}
+
+function missing() {
+  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow)
     .then(() => loadNext());
 }
 
