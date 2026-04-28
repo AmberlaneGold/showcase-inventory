@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Showcase Audit</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      font-size: 20px;
+    }
+
+    button {
+      font-size: 22px;
+      padding: 15px;
+      margin: 10px;
+      width: 220px;
+    }
+
+    .yes { background: #4CAF50; color: white; }
+    .no { background: #f44336; color: white; }
+  </style>
+</head>
+<body>
+
+<h2>Showcase Inventory Check</h2>
+
+<div>
+  <p><strong>Item:</strong> <span id="name"></span></p>
+  <p><strong>Current Qty:</strong> <span id="qty"></span></p>
+</div>
+
+<div>
+  <button class="yes" onclick="mark(true)">YES (Present)</button>
+  <button class="no" onclick="mark(false)">NO (Missing)</button>
+</div>
+
+<p id="status"></p>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB3VVRPfqpV0uBS_rjKg27Rgo_j7Gw5zB1aUMB65tRj-D7Ay4aKj6K6o7MOUr_7be42A/exec";
+
+let currentRow = 1;
+
+function loadNext() {
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    body: new URLSearchParams({
+      action: "getNext",
+      lastRow: currentRow
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (!data) {
+      document.body.innerHTML = "<h2>All items checked ✅</h2>";
+      return;
+    }
+
+    currentRow = data.row + 1;
+
+    document.getElementById("name").innerText = data.name;
+    document.getElementById("qty").innerText = data.qty;
+  });
+}
+
+function mark(isPresent) {
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    body: new URLSearchParams({
+      action: "update",
+      row: currentRow - 1,
+      present: isPresent
+    })
+  })
+  .then(res => res.json())
+  .then(() => {
+    document.getElementById("status").innerText = "Saved ✔";
+    loadNext();
+  });
+}
+
+loadNext();
+</script>
+
+</body>
+</html>
