@@ -96,6 +96,7 @@ function loadBatch() {
   fetch(SCRIPT_URL + "?action=batch")
     .then(r => r.json())
     .then(data => {
+
       batch = data.items;
       index = 0;
 
@@ -105,7 +106,13 @@ function loadBatch() {
         return;
       }
 
+      startRow = batch[0].row;
+
+      // 🔥 TRUE last data row from full sheet scan (passed from backend)
+      lastSheetRow = data.lastRow;
+
       render(batch[index]);
+      updateProgress();
     });
 }
 
