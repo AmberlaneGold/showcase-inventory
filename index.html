@@ -26,17 +26,8 @@
       box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     }
 
-    .name {
-      font-size: 22px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-
-    .qty, .price {
-      font-size: 16px;
-      color: #555;
-      margin-bottom: 10px;
-    }
+    .name { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+    .qty, .price { font-size: 16px; color: #555; margin-bottom: 10px; }
 
     input {
       width: 100%;
@@ -60,11 +51,7 @@
     .no { background: #e74c3c; color: white; }
     .skip { background: #777; color: white; }
 
-    #status {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #666;
-    }
+    #status { font-size: 14px; color: #666; margin-top: 10px; }
   </style>
 </head>
 
@@ -73,7 +60,7 @@
 <div class="wrap">
 
   <div class="card">
-    <div class="name" id="name">Loading...</div>
+    <div class="name" id="name">Loading batch...</div>
 
     <div class="qty">Qty: <span id="qty"></span></div>
     <div class="price">Price: <span id="price"></span></div>
@@ -91,42 +78,105 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1RU5y3eXIJGQswoezHlPQB5G9w8Km1BVe9nQCocRno0RK086Rrb8ZkVufCCnCeNXY6g/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyMzClqM8_Dxl7fjAsnpLyCijlWWevZmIXifpMiXCNkQUJ3j0NgtIZDfza4w57NgGhvg/exec";
 
-let currentRow = 1;
+let batch = [];
+let index = 0;
+let currentRow = null;
 let longPressTimer;
 
 /**
- * ⚡ FAST LOAD (no caching lag)
+ * 🔥 LOAD 20 ITEMS AT ONCE
  */
-function loadNext() {
-  fetch(SCRIPT_URL + "?action=getNext")
+function loadBatch() {
+  fetch(SCRIPT_URL + "?action=batch")
     .then(r => r.json())
     .then(data => {
-      if (!data) {
+      batch = data.items;
+      index = 0;
+
+      if (!batch.length) {
         document.body.innerHTML =
-          "<h2 style='text-align:center;margin-top:100px;'>All done ✅</h2>";
+          "<h2 style='text-align:center;margin-top:100px;'>Done ✅</h2>";
         return;
       }
 
-      currentRow = data.row;
-
-      document.getElementById("name").innerText = data.name;
-      document.getElementById("qty").innerText = data.qty;
-      document.getElementById("price").innerText = data.price;
-
-      document.getElementById("priceInput").value = "";
+      render(batch[index]);
     });
 }
 
 /**
- * YES button (tap + long press support)
+ * ⚡ INSTANT SWITCH (no server call)
+ */
+function render(item) {
+  currentRow = item.row;
+
+  document.getElementById("name").innerText = item.name;
+  document.getElementById("qty").innerText = item.qty;
+  document.getElementById("price").innerText = item.price;
+
+  document.getElementById("priceInput").value = "";
+}
+
+/**
+ * NEXT ITEM (local, instant)
+ */
+function nextLocal() {
+  index++;
+
+  if (index >= batch.length) {
+    loadBatch(); // fetch next batch
+  } else {
+    render(batch[index]);
+  }
+}
+
+/**
+ * YES
+ */
+function yes() {
+  const price = document.getElementById("priceInput").value;
+
+  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + price)
+    .then(() => nextLocal());
+}
+
+/**
+ * MISS
+ */
+function missing() {
+  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow)
+    .then(() => nextLocal());
+}
+
+/**
+ * SKIP
+ */
+function skip() {
+  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow)
+    .then(() => nextLocal());
+}
+
+/**
+ * BACK (simple batch reverse)
+ */
+function back() {
+  if (index > 0) {
+    index--;
+    render(batch[index]);
+  } else {
+    fetch(SCRIPT_URL + "?action=back")
+      .then(() => loadBatch());
+  }
+}
+
+/**
+ * YES BUTTON + LONG PRESS
  */
 const yesBtn = document.getElementById("yesBtn");
 
 yesBtn.addEventListener("mousedown", startPress);
 yesBtn.addEventListener("touchstart", startPress);
-
 yesBtn.addEventListener("mouseup", endPress);
 yesBtn.addEventListener("mouseleave", endPress);
 yesBtn.addEventListener("touchend", endPress);
@@ -142,29 +192,7 @@ function endPress() {
   yes();
 }
 
-function yes() {
-  const price = document.getElementById("priceInput").value;
-
-  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + price)
-    .then(() => loadNext());
-}
-
-function missing() {
-  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow)
-    .then(() => loadNext());
-}
-
-function skip() {
-  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow)
-    .then(() => loadNext());
-}
-
-function back() {
-  fetch(SCRIPT_URL + "?action=back")
-    .then(() => loadNext());
-}
-
-loadNext();
+loadBatch();
 </script>
 
 </body>
