@@ -26,8 +26,17 @@ body {
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
-.name { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
-.qty, .price { font-size: 16px; color: #555; margin-bottom: 10px; }
+.name {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.qty, .price {
+  font-size: 16px;
+  color: #555;
+  margin-bottom: 10px;
+}
 
 input {
   width: 100%;
@@ -51,10 +60,22 @@ button {
 .no { background: #e74c3c; color: white; }
 .skip { background: #777; color: white; }
 
-#status {
-  font-size: 13px;
-  color: #666;
-  margin-top: 10px;
+/* 📊 PROGRESS BAR */
+#progressContainer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  background: #ddd;
+  z-index: 9999;
+}
+
+#progressBar {
+  height: 100%;
+  width: 0%;
+  background: #2ecc71;
+  transition: width 0.2s ease;
 }
 </style>
 </head>
@@ -63,34 +84,41 @@ button {
 
 <div class="wrap">
 
-<div class="card">
-  <div class="name" id="name">Loading...</div>
+  <div class="card">
+    <div class="name" id="name">Loading...</div>
 
-  <div class="qty">Qty: <span id="qty"></span></div>
-  <div class="price">Price: <span id="price"></span></div>
+    <div class="qty">Qty: <span id="qty"></span></div>
+    <div class="price">Price: <span id="price"></span></div>
 
-  <input id="priceInput" type="number" placeholder="Price (optional)">
+    <input id="priceInput" type="number" placeholder="Price (optional)">
 
-  <button class="yes" id="yesBtn">YES</button>
-  <button class="no" onclick="missing()">MISSING (hold)</button>
-  <button class="skip" onclick="skip()">SKIP</button>
-  <button class="skip" onclick="back()">⬅ BACK</button>
+    <button class="yes" id="yesBtn">YES</button>
+    <button class="no" onclick="missing()">MISSING (hold)</button>
+    <button class="skip" onclick="skip()">SKIP</button>
+    <button class="skip" onclick="back()">⬅ BACK</button>
+  </div>
 
-  <div id="status"></div>
 </div>
 
+<!-- 📊 Progress bar -->
+<div id="progressContainer">
+  <div id="progressBar"></div>
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkkuqjlnWdnVWEVngLiDx8LRmS_8yj1hsWWdvuFnKR3oJzVObP8qmieikVoppxvXaTSQ/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB5dQUxJwzDCj_mw4uuq5OAqR5IMmKgtLYVfPOxUHQ8Gpxn8ARQs5G5udhXHTyZ2aycw/exec";
 
 let batch = [];
 let index = 0;
 let currentRow = null;
+
+let startRow = 1;
+let lastSheetRow = 1;
+
 let longPressTimer;
 
 /**
- * 🔥 LOAD BATCH
+ * 📦 LOAD BATCH
  */
 function loadBatch() {
   fetch(SCRIPT_URL + "?action=batch")
@@ -107,8 +135,6 @@ function loadBatch() {
       }
 
       startRow = batch[0].row;
-
-      // 🔥 TRUE last data row from full sheet scan (passed from backend)
       lastSheetRow = data.lastRow;
 
       render(batch[index]);
@@ -117,7 +143,7 @@ function loadBatch() {
 }
 
 /**
- * ⚡ RENDER ITEM
+ * 📄 RENDER ITEM
  */
 function render(item) {
   currentRow = item.row;
@@ -127,10 +153,11 @@ function render(item) {
   document.getElementById("price").innerText = item.price;
 
   document.getElementById("priceInput").value = "";
+  updateProgress();
 }
 
 /**
- * ⚡ INSTANT NEXT (NO WAIT)
+ * ⚡ NEXT ITEM (instant)
  */
 function nextLocal() {
   index++;
@@ -143,34 +170,57 @@ function nextLocal() {
 }
 
 /**
- * 🚀 YES (INSTANT UI + BACKGROUND SYNC)
+ * 📊 PROGRESS BAR
+ */
+function updateProgress() {
+  if (!currentRow || !startRow || !lastSheetRow) return;
+
+  let percent =
+    ((currentRow - startRow) / (lastSheetRow - startRow)) * 100;
+
+  if (percent < 0) percent = 0;
+  if (percent > 100) percent = 100;
+
+  document.getElementById("progressBar").style.width = percent + "%";
+}
+
+/**
+ * 🚀 YES (instant UI + background sync)
  */
 function yes() {
   const price = document.getElementById("priceInput").value;
 
-  nextLocal(); // 👈 instant UI update FIRST
+  nextLocal();
 
   fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + price);
+
+  setTimeout(updateProgress, 50);
 }
 
 /**
- * 🚀 MISS (INSTANT)
+ * ❌ MISS
  */
 function missing() {
   nextLocal();
+
   fetch(SCRIPT_URL + "?action=missing&row=" + currentRow);
+
+  setTimeout(updateProgress, 50);
 }
 
 /**
- * 🚀 SKIP (INSTANT)
+ * ⏭ SKIP
  */
 function skip() {
   nextLocal();
+
   fetch(SCRIPT_URL + "?action=skip&row=" + currentRow);
+
+  setTimeout(updateProgress, 50);
 }
 
 /**
- * BACK (local first, server fallback)
+ * ⬅ BACK
  */
 function back() {
   if (index > 0) {
