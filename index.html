@@ -3,21 +3,12 @@
 <head>
   <title>Showcase Audit</title>
   <style>
-    body {
-      font-family: Arial;
-      padding: 20px;
-      font-size: 20px;
-    }
-
-    button {
-      font-size: 22px;
-      padding: 15px;
-      margin: 10px;
-      width: 220px;
-    }
+    body { font-family: Arial; padding: 20px; font-size: 20px; }
+    button { padding: 15px; margin: 10px; font-size: 18px; width: 200px; }
 
     .yes { background: #4CAF50; color: white; }
     .no { background: #f44336; color: white; }
+    .skip { background: #777; color: white; }
   </style>
 </head>
 <body>
@@ -26,41 +17,55 @@
 
 <div>
   <p><strong>Item:</strong> <span id="name"></span></p>
-  <p><strong>Current Qty:</strong> <span id="qty"></span></p>
+  <p><strong>Qty:</strong> <span id="qty"></span></p>
+
+  <p><strong>Progress:</strong> <span id="progress"></span></p>
 </div>
 
 <div>
-  <button class="yes" onclick="mark(true)">YES (Present)</button>
-  <button class="no" onclick="mark(false)">NO (Missing)</button>
+  <button class="yes" onclick="mark(true)">YES</button>
+  <button class="no" onclick="mark(false)">NO</button>
+  <button class="skip" onclick="skip()">SKIP</button>
 </div>
 
 <p id="status"></p>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4fHJ8fwa-Cim-lkJJYLCG7kY4cCbxu8fjLEZSFD0_9pVTl05U94EKyxrrX0hswOYUxA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6IVM7_0ucXTYXzxqZLc9y-s6W8sqIxWsUhW10PFwhTlI9j87HCeLya9iyU40jOzGc/exec";
 
 let currentRow = 1;
+let totalItems = 0;
 
 function loadNext() {
   fetch(SCRIPT_URL, {
     method: "POST",
     body: new URLSearchParams({
-      action: "getNext",
-      lastRow: currentRow
+      action: "getNext"
     })
   })
   .then(res => res.json())
   .then(data => {
     if (!data) {
-      document.body.innerHTML = "<h2>All items checked ✅</h2>";
+      document.body.innerHTML = "<h2>All items completed ✅</h2>";
       return;
     }
 
-    currentRow = data.row + 1;
+    currentRow = data.row;
+    totalItems = data.total;
 
     document.getElementById("name").innerText = data.name;
     document.getElementById("qty").innerText = data.qty;
+
+    updateProgress();
   });
+}
+
+function updateProgress() {
+  fetch(SCRIPT_URL + "?action=getMeta")
+  .catch(() => {});
+
+  document.getElementById("progress").innerText =
+    "Row " + currentRow + " / " + totalItems;
 }
 
 function mark(isPresent) {
@@ -68,15 +73,22 @@ function mark(isPresent) {
     method: "POST",
     body: new URLSearchParams({
       action: "update",
-      row: currentRow - 1,
+      row: currentRow,
       present: isPresent
     })
   })
-  .then(res => res.json())
-  .then(() => {
-    document.getElementById("status").innerText = "Saved ✔";
-    loadNext();
-  });
+  .then(() => loadNext());
+}
+
+function skip() {
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    body: new URLSearchParams({
+      action: "skip",
+      row: currentRow
+    })
+  })
+  .then(() => loadNext());
 }
 
 loadNext();
