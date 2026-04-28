@@ -1,84 +1,88 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Showcase Audit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Showcase Audit</title>
 
-  <style>
-    body {
-      font-family: Arial;
-      margin: 0;
-      background: #f4f4f4;
-    }
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #f4f4f4;
+}
 
-    .wrap {
-      max-width: 520px;
-      margin: auto;
-      padding: 20px;
-    }
+.wrap {
+  max-width: 520px;
+  margin: auto;
+  padding: 20px;
+}
 
-    .card {
-      background: white;
-      padding: 25px;
-      border-radius: 16px;
-      margin-top: 40px;
-      text-align: center;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    }
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 16px;
+  margin-top: 40px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
 
-    .name { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
-    .qty, .price { font-size: 16px; color: #555; margin-bottom: 10px; }
+.name { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+.qty, .price { font-size: 16px; color: #555; margin-bottom: 10px; }
 
-    input {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      margin-top: 10px;
-    }
+input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  margin-top: 10px;
+}
 
-    button {
-      width: 100%;
-      padding: 18px;
-      font-size: 18px;
-      border: none;
-      border-radius: 12px;
-      margin-top: 10px;
-    }
+button {
+  width: 100%;
+  padding: 18px;
+  font-size: 18px;
+  border: none;
+  border-radius: 12px;
+  margin-top: 10px;
+}
 
-    .yes { background: #2ecc71; color: white; }
-    .no { background: #e74c3c; color: white; }
-    .skip { background: #777; color: white; }
+.yes { background: #2ecc71; color: white; }
+.no { background: #e74c3c; color: white; }
+.skip { background: #777; color: white; }
 
-    #status { font-size: 14px; color: #666; margin-top: 10px; }
-  </style>
+#status {
+  font-size: 13px;
+  color: #666;
+  margin-top: 10px;
+}
+</style>
 </head>
 
 <body>
 
 <div class="wrap">
 
-  <div class="card">
-    <div class="name" id="name">Loading batch...</div>
+<div class="card">
+  <div class="name" id="name">Loading...</div>
 
-    <div class="qty">Qty: <span id="qty"></span></div>
-    <div class="price">Price: <span id="price"></span></div>
+  <div class="qty">Qty: <span id="qty"></span></div>
+  <div class="price">Price: <span id="price"></span></div>
 
-    <input id="priceInput" type="number" placeholder="Price (optional)">
+  <input id="priceInput" type="number" placeholder="Price (optional)">
 
-    <button class="yes" id="yesBtn">YES</button>
-    <button class="no" onclick="missing()">MISSING (long press)</button>
-    <button class="skip" onclick="skip()">SKIP</button>
-    <button class="skip" onclick="back()">⬅ BACK</button>
+  <button class="yes" id="yesBtn">YES</button>
+  <button class="no" onclick="missing()">MISSING (hold)</button>
+  <button class="skip" onclick="skip()">SKIP</button>
+  <button class="skip" onclick="back()">⬅ BACK</button>
 
-    <div id="status"></div>
-  </div>
+  <div id="status"></div>
+</div>
 
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyMzClqM8_Dxl7fjAsnpLyCijlWWevZmIXifpMiXCNkQUJ3j0NgtIZDfza4w57NgGhvg/exec";
+const SCRIPT_URL = "PASTE_YOUR_SCRIPT_URL_HERE";
 
 let batch = [];
 let index = 0;
@@ -86,7 +90,7 @@ let currentRow = null;
 let longPressTimer;
 
 /**
- * 🔥 LOAD 20 ITEMS AT ONCE
+ * 🔥 LOAD BATCH
  */
 function loadBatch() {
   fetch(SCRIPT_URL + "?action=batch")
@@ -106,7 +110,7 @@ function loadBatch() {
 }
 
 /**
- * ⚡ INSTANT SWITCH (no server call)
+ * ⚡ RENDER ITEM
  */
 function render(item) {
   currentRow = item.row;
@@ -119,46 +123,47 @@ function render(item) {
 }
 
 /**
- * NEXT ITEM (local, instant)
+ * ⚡ INSTANT NEXT (NO WAIT)
  */
 function nextLocal() {
   index++;
 
   if (index >= batch.length) {
-    loadBatch(); // fetch next batch
+    loadBatch();
   } else {
     render(batch[index]);
   }
 }
 
 /**
- * YES
+ * 🚀 YES (INSTANT UI + BACKGROUND SYNC)
  */
 function yes() {
   const price = document.getElementById("priceInput").value;
 
-  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + price)
-    .then(() => nextLocal());
+  nextLocal(); // 👈 instant UI update FIRST
+
+  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + price);
 }
 
 /**
- * MISS
+ * 🚀 MISS (INSTANT)
  */
 function missing() {
-  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow)
-    .then(() => nextLocal());
+  nextLocal();
+  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow);
 }
 
 /**
- * SKIP
+ * 🚀 SKIP (INSTANT)
  */
 function skip() {
-  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow)
-    .then(() => nextLocal());
+  nextLocal();
+  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow);
 }
 
 /**
- * BACK (simple batch reverse)
+ * BACK (local first, server fallback)
  */
 function back() {
   if (index > 0) {
