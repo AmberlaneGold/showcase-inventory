@@ -118,7 +118,7 @@ button {
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwquwleZThz900yvRXY2AoIqZp_Lyc1BUKZS68op3NM-jdb-zkmih4-bhPdTD0TiCRzKQ/exec";
+const SCRIPT_URL = "PASTE YOUR URL HERE";
 
 let batch = [];
 let currentRow = null;
@@ -131,17 +131,21 @@ function loadBatch() {
   fetch(SCRIPT_URL + "?action=batch")
     .then(r => r.json())
     .then(data => {
-      batch = data.items;
 
-      if (!batch.length) {
-        document.body.innerHTML = "<h2>Done ✅</h2>";
+      if (!data.items || data.items.length === 0) {
+        document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;'>Done ✅</h2>";
         return;
       }
+
+      batch = data.items;
 
       startRow = batch[0].row;
       lastSheetRow = data.lastRow;
 
       render(batch[0]);
+    })
+    .catch(() => {
+      document.body.innerHTML = "<h2>Load failed</h2>";
     });
 }
 
@@ -210,14 +214,7 @@ function resetInventory() {
   if (!confirm("Start from the beginning?")) return;
 
   fetch(SCRIPT_URL + "?action=reset")
-    .then(r => r.json())
-    .then(data => {
-      if (data.reset) {
-        loadBatch();
-      } else {
-        alert("Reset failed: " + JSON.stringify(data));
-      }
-    });
+    .then(() => loadBatch());
 }
 
 /* START */
