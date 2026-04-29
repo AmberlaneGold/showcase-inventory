@@ -131,8 +131,9 @@ function render() {
   document.getElementById("qty").innerText = item.qty;
   document.getElementById("price").innerText = item.price;
 
+  // 🔥 CHANGED: show actual sheet row only
   document.getElementById("status").innerText =
-    `Row ${item.row} • Item ${i + 1} of ${items.length}`;
+    `Row ${item.row}`;
 }
 
 /* ---------------- ACTIONS ---------------- */
