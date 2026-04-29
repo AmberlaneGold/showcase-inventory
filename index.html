@@ -1,126 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Showcase Audit</title>
-
-<style>
-body {
-  font-family: -apple-system, Arial;
-  margin: 0;
-  background: #f2f2f2;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-.container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.card {
-  width: 100%;
-  max-width: 420px;
-  background: white;
-  border-radius: 18px;
-  padding: 25px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  text-align: center;
-}
-
-.name {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.meta {
-  color: #666;
-  margin-bottom: 15px;
-}
-
-input {
-  width: 100%;
-  padding: 14px;
-  font-size: 16px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  margin-bottom: 15px;
-}
-
-button {
-  width: 100%;
-  padding: 16px;
-  font-size: 17px;
-  border-radius: 12px;
-  border: none;
-  margin-top: 8px;
-}
-
-.yes { background: #27ae60; color: white; }
-.no { background: #c0392b; color: white; }
-.skip { background: #7f8c8d; color: white; }
-
-.row {
-  display: flex;
-  gap: 10px;
-}
-
-#progressWrap {
-  height: 10px;
-  background: #ddd;
-}
-
-#progressBar {
-  height: 100%;
-  width: 0%;
-  background: #27ae60;
-  transition: width 0.2s;
-}
-
-#status {
-  font-size: 12px;
-  color: #888;
-  margin-top: 5px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-  <div class="card">
-
-    <div class="name" id="name">Loading...</div>
-
-    <div class="meta">
-      Qty: <span id="qty"></span> |
-      Price: $<span id="price"></span>
-    </div>
-
-    <input id="priceInput" type="number" placeholder="Update price (optional)">
-
-    <button class="yes" onclick="yes()">YES</button>
-    <button class="no" onclick="missing()">MISSING</button>
-
-    <div class="row">
-      <button class="skip" onclick="skip()">SKIP</button>
-      <button class="skip" onclick="back()">BACK</button>
-    </div>
-
-    <div id="status">Loading items...</div>
-
-  </div>
-</div>
-
-<div id="progressWrap">
-  <div id="progressBar"></div>
-</div>
-
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwquwleZThz900yvRXY2AoIqZp_Lyc1BUKZS68op3NM-jdb-zkmih4-bhPdTD0TiCRzKQ/exec";
 
@@ -130,42 +7,51 @@ let startRow = 1;
 let lastSheetRow = 1;
 let locked = false;
 
-/* ---------------- LOAD (NO DONE STATE EVER) ---------------- */
+/* ---------------- SAFE FETCH ---------------- */
 
-function loadBatch() {
+async function safeFetch(url) {
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    const text = await res.text();
+
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.log("BAD RESPONSE:", text);
+      return null;
+    }
+
+  } catch (err) {
+    console.log("FETCH ERROR:", err);
+    return null;
+  }
+}
+
+/* ---------------- LOAD ---------------- */
+
+async function loadBatch() {
   document.getElementById("status").innerText = "Loading...";
 
-  fetch(SCRIPT_URL + "?action=batch")
-    .then(r => r.json())
-    .then(data => {
+  const data = await safeFetch(SCRIPT_URL + "?action=batch");
 
-      console.log("SERVER:", data);
+  if (!data || !data.items) {
+    document.getElementById("status").innerText = "Retrying...";
+    setTimeout(loadBatch, 1500);
+    return;
+  }
 
-      if (!data || !data.items) {
-        document.getElementById("status").innerText = "Retrying...";
-        setTimeout(loadBatch, 1500);
-        return;
-      }
+  batch = data.items;
 
-      batch = data.items;
+  if (!batch.length) {
+    document.getElementById("status").innerText = "No items — retrying...";
+    setTimeout(loadBatch, 1500);
+    return;
+  }
 
-      // 🔁 if empty, just retry instead of showing DONE
-      if (batch.length === 0) {
-        document.getElementById("status").innerText = "No items found — retrying...";
-        setTimeout(loadBatch, 1500);
-        return;
-      }
+  startRow = batch[0].row;
+  lastSheetRow = data.lastRow || startRow;
 
-      startRow = batch[0].row;
-      lastSheetRow = data.lastRow;
-
-      render(batch[0]);
-    })
-    .catch(err => {
-      console.log(err);
-      document.getElementById("status").innerText = "Connection error — retrying...";
-      setTimeout(loadBatch, 2000);
-    });
+  render(batch[0]);
 }
 
 /* ---------------- RENDER ---------------- */
@@ -204,7 +90,6 @@ function nextItem() {
   if (next) {
     render(next);
   } else {
-    // 🔁 instead of DONE → reload new batch
     loadBatch();
   }
 }
@@ -215,7 +100,9 @@ function yes() {
   if (locked) return;
   locked = true;
 
-  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + priceInput.value);
+  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + priceInput.value)
+    .catch(() => {});
+
   nextItem();
 }
 
@@ -223,7 +110,9 @@ function missing() {
   if (locked) return;
   locked = true;
 
-  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow);
+  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow)
+    .catch(() => {});
+
   nextItem();
 }
 
@@ -231,19 +120,19 @@ function skip() {
   if (locked) return;
   locked = true;
 
-  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow);
+  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow)
+    .catch(() => {});
+
   nextItem();
 }
 
 function back() {
   fetch(SCRIPT_URL + "?action=back")
-    .then(() => loadBatch());
+    .then(() => loadBatch())
+    .catch(() => loadBatch());
 }
 
 /* ---------------- START ---------------- */
 
 loadBatch();
 </script>
-
-</body>
-</html>
