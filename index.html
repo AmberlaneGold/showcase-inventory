@@ -2,39 +2,32 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Showcase Audit</title>
+<title>Showcase</title>
 
 <style>
 body {
-  font-family: -apple-system, Arial;
+  font-family: Arial;
   margin: 0;
   background: #f2f2f2;
-  display: flex;
-  flex-direction: column;
   height: 100vh;
-}
-
-.container {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
 }
 
 .card {
-  width: 100%;
+  width: 90%;
   max-width: 420px;
   background: white;
-  border-radius: 18px;
-  padding: 25px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
   text-align: center;
 }
 
 .name {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: bold;
   margin-bottom: 10px;
 }
 
@@ -45,219 +38,124 @@ body {
 
 input {
   width: 100%;
-  padding: 14px;
+  padding: 12px;
   font-size: 16px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 button {
   width: 100%;
-  padding: 16px;
-  font-size: 17px;
-  border-radius: 12px;
-  border: none;
+  padding: 14px;
   margin-top: 8px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
 }
 
 .yes { background: #27ae60; color: white; }
 .no { background: #c0392b; color: white; }
 .skip { background: #7f8c8d; color: white; }
 
-.row {
-  display: flex;
-  gap: 10px;
-}
-
-#progressWrap {
-  height: 10px;
-  background: #ddd;
-}
-
-#progressBar {
-  height: 100%;
-  width: 0%;
-  background: #27ae60;
-  transition: width 0.2s;
-}
-
-#status {
+.status {
   font-size: 12px;
   color: #888;
-  margin-top: 5px;
+  margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-  <div class="card">
+<div class="card">
 
-    <div class="name" id="name">Loading...</div>
+  <div class="name" id="name">Loading...</div>
 
-    <div class="meta">
-      Qty: <span id="qty"></span> |
-      Price: $<span id="price"></span>
-    </div>
-
-    <input id="priceInput" type="number" placeholder="Update price (optional)">
-
-    <button class="yes" onclick="yes()">YES</button>
-    <button class="no" onclick="missing()">MISSING</button>
-
-    <div class="row">
-      <button class="skip" onclick="skip()">SKIP</button>
-      <button class="skip" onclick="back()">BACK</button>
-    </div>
-
-    <div id="status">Loading items...</div>
-
+  <div class="meta">
+    Qty: <span id="qty"></span> |
+    Price: $<span id="price"></span>
   </div>
-</div>
 
-<div id="progressWrap">
-  <div id="progressBar"></div>
+  <input id="priceInput" type="number" placeholder="Price">
+
+  <button class="yes" onclick="yes()">YES</button>
+  <button class="no" onclick="missing()">MISSING</button>
+  <button class="skip" onclick="next()">SKIP</button>
+
+  <div class="status" id="status">Loading...</div>
+
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwquwleZThz900yvRXY2AoIqZp_Lyc1BUKZS68op3NM-jdb-zkmih4-bhPdTD0TiCRzKQ/exec";
 
-let batch = [];
-let currentRow = null;
-let startRow = 1;
-let lastSheetRow = 1;
-let locked = false;
+const URL = "https://script.google.com/macros/s/AKfycbwhb6kpe1-dZXZx3W8sXhAfjujIsFwGrVWeI0ZWZkRdf6mCU_nD9-ow-sVqCYAnTwBeig/exec";
 
-/* ---------------- SAFE FETCH (FIXES YOUR ISSUE) ---------------- */
-
-async function safeFetch(url) {
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    const text = await res.text();
-
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      console.log("NON-JSON RESPONSE:", text);
-      return null;
-    }
-
-  } catch (err) {
-    console.log("FETCH ERROR:", err);
-    return null;
-  }
-}
+let items = [];
+let i = 0;
 
 /* ---------------- LOAD ---------------- */
 
-async function loadBatch() {
+async function load() {
   document.getElementById("status").innerText = "Loading...";
 
-  const data = await safeFetch(SCRIPT_URL + "?action=batch");
+  const res = await fetch(URL + "?action=batch");
+  const data = await res.json();
 
-  if (!data || !data.items) {
-    document.getElementById("status").innerText = "Retrying...";
-    setTimeout(loadBatch, 1500);
+  items = data.items || [];
+
+  if (!items.length) {
+    document.getElementById("status").innerText = "No items found";
     return;
   }
 
-  batch = data.items;
-
-  if (!batch.length) {
-    document.getElementById("status").innerText = "No items — retrying...";
-    setTimeout(loadBatch, 1500);
-    return;
-  }
-
-  startRow = batch[0].row;
-  lastSheetRow = data.lastRow || startRow;
-
-  render(batch[0]);
+  i = 0;
+  render();
 }
 
 /* ---------------- RENDER ---------------- */
 
-function render(item) {
-  currentRow = item.row;
+function render() {
+  const item = items[i];
 
   document.getElementById("name").innerText = item.name;
   document.getElementById("qty").innerText = item.qty;
   document.getElementById("price").innerText = item.price;
 
-  document.getElementById("priceInput").value = "";
-
-  document.getElementById("status").innerText = "Row " + currentRow;
-
-  updateProgress();
-  locked = false;
-}
-
-/* ---------------- PROGRESS ---------------- */
-
-function updateProgress() {
-  let percent =
-    ((currentRow - startRow) / (lastSheetRow - startRow)) * 100;
-
-  percent = Math.max(0, Math.min(100, percent));
-
-  document.getElementById("progressBar").style.width = percent + "%";
-}
-
-/* ---------------- NEXT ITEM ---------------- */
-
-function nextItem() {
-  const next = batch.find(i => i.row > currentRow);
-
-  if (next) {
-    render(next);
-  } else {
-    loadBatch();
-  }
+  document.getElementById("status").innerText =
+    "Row " + item.row + " (" + (i+1) + "/" + items.length + ")";
 }
 
 /* ---------------- ACTIONS ---------------- */
 
 function yes() {
-  if (locked) return;
-  locked = true;
+  const item = items[i];
+  const price = document.getElementById("priceInput").value;
 
-  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + priceInput.value)
-    .catch(() => {});
+  fetch(URL + "?action=yes&row=" + item.row + "&price=" + price);
 
-  nextItem();
+  next();
 }
 
 function missing() {
-  if (locked) return;
-  locked = true;
+  const item = items[i];
 
-  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow)
-    .catch(() => {});
+  fetch(URL + "?action=missing&row=" + item.row);
 
-  nextItem();
+  next();
 }
 
-function skip() {
-  if (locked) return;
-  locked = true;
-
-  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow)
-    .catch(() => {});
-
-  nextItem();
-}
-
-function back() {
-  fetch(SCRIPT_URL + "?action=back")
-    .then(() => loadBatch())
-    .catch(() => loadBatch());
+function next() {
+  i++;
+  if (i >= items.length) {
+    load();
+    return;
+  }
+  render();
 }
 
 /* ---------------- START ---------------- */
 
-loadBatch();
+load();
+
 </script>
 
 </body>
