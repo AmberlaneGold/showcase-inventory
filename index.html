@@ -87,7 +87,7 @@ button {
 
   <div class="row">
     <button class="skip" onclick="back()">⬅ Back</button>
-    <button class="skip" onclick="next()">Skip ➡</button>
+    <button class="skip" onclick="next()">Next ➡</button>
   </div>
 
   <button class="skip" onclick="refresh()">🔄 Refresh</button>
@@ -98,7 +98,7 @@ button {
 
 <script>
 
-const URL = "https://script.google.com/macros/s/AKfycbwhb6kpe1-dZXZx3W8sXhAfjujIsFwGrVWeI0ZWZkRdf6mCU_nD9-ow-sVqCYAnTwBeig/exec";
+const URL = "https://script.google.com/macros/s/AKfycbywBIh6u9U7kgCxvagqTnsB6Wquoe6Diiivmx2wTv5NoD0Za21Fsp3VFNd48jmsqxEBzg/exec";
 
 let items = [];
 let i = 0;
@@ -114,7 +114,7 @@ async function load() {
   items = data.items || [];
 
   if (!items.length) {
-    document.getElementById("status").innerText = "No items found";
+    document.getElementById("status").innerText = "No more items";
     return;
   }
 
@@ -131,7 +131,6 @@ function render() {
   document.getElementById("qty").innerText = item.qty;
   document.getElementById("price").innerText = item.price;
 
-  // 🔥 CHANGED: show actual sheet row only
   document.getElementById("status").innerText =
     `Row ${item.row}`;
 }
@@ -162,7 +161,7 @@ function next() {
     i++;
     render();
   } else {
-    refresh();
+    refresh(); // loads next chunk WITHOUT resetting loop
   }
 }
 
