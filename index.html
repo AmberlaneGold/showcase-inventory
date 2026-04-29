@@ -98,27 +98,29 @@ button {
 
 <script>
 
-const URL = "https://script.google.com/macros/s/AKfycbywBIh6u9U7kgCxvagqTnsB6Wquoe6Diiivmx2wTv5NoD0Za21Fsp3VFNd48jmsqxEBzg/exec";
+const URL = "https://script.google.com/macros/s/AKfycbz5WkiwNuLRsMgOCfylp--9nmieMCJDfsaAdfzPWloydFgyWVLbEOW2Zqt1nfWmQB84GQ/exec";
 
 let items = [];
 let i = 0;
+let lastRowSeen = 5;
 
 /* ---------------- LOAD ---------------- */
 
-async function load() {
-  document.getElementById("status").innerText = "Loading...";
+async function load(startRow = 5) {
 
-  const res = await fetch(URL + "?action=batch");
+  const res = await fetch(URL + "?action=batch&startRow=" + startRow);
   const data = await res.json();
 
   items = data.items || [];
 
   if (!items.length) {
-    document.getElementById("status").innerText = "No more items";
+    document.getElementById("status").innerText = "End of sheet";
     return;
   }
 
   i = 0;
+  lastRowSeen = items[items.length - 1].row;
+
   render();
 }
 
@@ -161,7 +163,7 @@ function next() {
     i++;
     render();
   } else {
-    refresh(); // loads next chunk WITHOUT resetting loop
+    load(lastRowSeen + 1); // 🔥 CONTINUE, DO NOT RESET
   }
 }
 
@@ -174,8 +176,8 @@ function back() {
 
 /* ---------------- REFRESH ---------------- */
 
-async function refresh() {
-  await load();
+function refresh() {
+  load(lastRowSeen + 1);
 }
 
 /* ---------------- START ---------------- */
