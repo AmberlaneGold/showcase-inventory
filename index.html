@@ -98,7 +98,7 @@ button {
 
     <input id="priceInput" type="number" placeholder="Update price (optional)">
 
-    <button class="yes" id="yesBtn">YES</button>
+    <button class="yes" onclick="yes()">YES</button>
     <button class="no" onclick="missing()">MISSING</button>
 
     <div class="row">
@@ -118,15 +118,12 @@ button {
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB5dQUxJwzDCj_mw4uuq5OAqR5IMmKgtLYVfPOxUHQ8Gpxn8ARQs5G5udhXHTyZ2aycw/exec";
+const SCRIPT_URL = "PASTE YOUR URL HERE";
 
 let batch = [];
-let currentIndex = 0;
 let currentRow = null;
-
 let startRow = 1;
 let lastSheetRow = 1;
-
 let locked = false;
 
 /* LOAD */
@@ -134,20 +131,17 @@ function loadBatch() {
   fetch(SCRIPT_URL + "?action=batch")
     .then(r => r.json())
     .then(data => {
-
       batch = data.items;
 
       if (!batch.length) {
-        document.body.innerHTML =
-          "<h2 style='text-align:center;margin-top:100px;'>Done ✅</h2>";
+        document.body.innerHTML = "<h2>Done ✅</h2>";
         return;
       }
 
       startRow = batch[0].row;
       lastSheetRow = data.lastRow;
 
-      currentIndex = 0;
-      render(batch[currentIndex]);
+      render(batch[0]);
     });
 }
 
@@ -155,11 +149,11 @@ function loadBatch() {
 function render(item) {
   currentRow = item.row;
 
-  document.getElementById("name").innerText = item.name;
-  document.getElementById("qty").innerText = item.qty;
-  document.getElementById("price").innerText = item.price;
+  name.innerText = item.name;
+  qty.innerText = item.qty;
+  price.innerText = item.price;
 
-  document.getElementById("priceInput").value = "";
+  priceInput.value = "";
 
   updateProgress();
   locked = false;
@@ -167,76 +161,48 @@ function render(item) {
 
 /* PROGRESS */
 function updateProgress() {
-  if (!currentRow || !startRow || !lastSheetRow) return;
-
   let percent =
     ((currentRow - startRow) / (lastSheetRow - startRow)) * 100;
 
   percent = Math.max(0, Math.min(100, percent));
-
-  document.getElementById("progressBar").style.width = percent + "%";
+  progressBar.style.width = percent + "%";
 }
 
-/* GET NEXT */
-function getNext() {
-  return batch.find(item => item.row > currentRow);
+/* NEXT */
+function nextItem() {
+  const next = batch.find(i => i.row > currentRow);
+  if (next) render(next);
+  else loadBatch();
 }
 
-/* YES */
+/* ACTIONS */
 function yes() {
   if (locked) return;
   locked = true;
 
-  const row = currentRow;
-  const price = document.getElementById("priceInput").value;
-
-  fetch(SCRIPT_URL + "?action=yes&row=" + row + "&price=" + price);
-
-  const next = getNext();
-  if (next) render(next);
-  else loadBatch();
+  fetch(SCRIPT_URL + "?action=yes&row=" + currentRow + "&price=" + priceInput.value);
+  nextItem();
 }
 
-/* MISSING */
 function missing() {
   if (locked) return;
   locked = true;
 
-  const row = currentRow;
-
-  fetch(SCRIPT_URL + "?action=missing&row=" + row);
-
-  const next = getNext();
-  if (next) render(next);
-  else loadBatch();
+  fetch(SCRIPT_URL + "?action=missing&row=" + currentRow);
+  nextItem();
 }
 
-/* SKIP */
 function skip() {
   if (locked) return;
   locked = true;
 
-  const row = currentRow;
-
-  fetch(SCRIPT_URL + "?action=skip&row=" + row);
-
-  const next = getNext();
-  if (next) render(next);
-  else loadBatch();
+  fetch(SCRIPT_URL + "?action=skip&row=" + currentRow);
+  nextItem();
 }
 
-/* BACK */
 function back() {
-  if (locked) return;
-
-  const i = batch.findIndex(x => x.row === currentRow);
-
-  if (i > 0) {
-    render(batch[i - 1]);
-  } else {
-    fetch(SCRIPT_URL + "?action=back")
-      .then(() => loadBatch());
-  }
+  fetch(SCRIPT_URL + "?action=back")
+    .then(() => loadBatch());
 }
 
 /* RESET */
@@ -244,39 +210,15 @@ function resetInventory() {
   if (!confirm("Start from the beginning?")) return;
 
   fetch(SCRIPT_URL + "?action=reset")
-    .then(() => {
-      batch = [];
-      currentIndex = 0;
-      currentRow = null;
-      loadBatch();
+    .then(r => r.json())
+    .then(data => {
+      if (data.reset) {
+        loadBatch();
+      } else {
+        alert("Reset failed: " + JSON.stringify(data));
+      }
     });
 }
-
-/* YES BUTTON */
-const yesBtn = document.getElementById("yesBtn");
-
-let holdTimer = null;
-
-yesBtn.addEventListener("touchstart", () => {
-  holdTimer = setTimeout(() => {
-    missing();
-  }, 700);
-});
-
-yesBtn.addEventListener("touchend", () => {
-  clearTimeout(holdTimer);
-  yes();
-});
-
-yesBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  yes();
-});
-
-/* INPUT SAFETY */
-document.getElementById("priceInput").addEventListener("click", e => {
-  e.stopPropagation();
-});
 
 /* START */
 loadBatch();
