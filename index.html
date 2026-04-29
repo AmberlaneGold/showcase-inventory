@@ -106,6 +106,10 @@ button {
       <button class="skip" onclick="back()">BACK</button>
     </div>
 
+    <button onclick="resetInventory()" style="background:#333;color:white;">
+      RESET
+    </button>
+
   </div>
 </div>
 
@@ -173,7 +177,7 @@ function updateProgress() {
   document.getElementById("progressBar").style.width = percent + "%";
 }
 
-/* GET NEXT VALID ITEM (ROW-BASED) */
+/* GET NEXT */
 function getNext() {
   return batch.find(item => item.row > currentRow);
 }
@@ -233,6 +237,19 @@ function back() {
     fetch(SCRIPT_URL + "?action=back")
       .then(() => loadBatch());
   }
+}
+
+/* RESET */
+function resetInventory() {
+  if (!confirm("Start from the beginning?")) return;
+
+  fetch(SCRIPT_URL + "?action=reset")
+    .then(() => {
+      batch = [];
+      currentIndex = 0;
+      currentRow = null;
+      loadBatch();
+    });
 }
 
 /* YES BUTTON */
